@@ -1,84 +1,78 @@
 <div align="center">
-  <img src="assets/presight-mark.svg" alt="Presight mark" width="72" height="72" />
-  <h1>Presight AI</h1>
-  <p><strong>把今天的市场变化，放回你的持仓里看。</strong></p>
-  <p>面向基金与股票投资者的 AI 市场研究工作台 · AI-powered market research workspace</p>
-  <p>
-    <a href="https://presight.cloud"><strong>打开 Presight</strong></a>
-    ·
-    <a href="https://github.com/Fire0206/Presight-AI">GitHub Showcase</a>
-  </p>
-  <p>
-    <a href="https://github.com/Fire0206/Presight-AI/stargazers"><img alt="GitHub stars" src="https://img.shields.io/github/stars/Fire0206/Presight-AI?style=social"></a>
-    <a href="https://github.com/Fire0206/Presight-AI/blob/main/LICENSE"><img alt="License" src="https://img.shields.io/badge/license-MIT-5965F5"></a>
-    <a href="https://presight.cloud"><img alt="Product" src="https://img.shields.io/badge/product-presight.cloud-5965F5"></a>
-  </p>
+  <img src="assets/presight-mark.svg" alt="知几标识" width="68" height="68" />
+  <h1>知几 Presight</h1>
+  <p><strong>基金、股票和市场资讯，放在一个工作台里。</strong></p>
+  <p><a href="https://presight.cloud"><strong>访问知几 Presight：presight.cloud →</strong></a></p>
 </div>
 
-<p align="center">
-  <img src="assets/presight-desktop.png" alt="Presight AI 官网与产品界面预览（桌面端）" width="92%">
-</p>
+知几是一款面向个人投资者的市场研究工具。你可以查看基金和股票行情、记录持仓与自选、跟踪市场热点，也可以创建符合自己研究习惯的智能体，结合实时行情、新闻和个人资料进行分析。
 
-## 看行情，也看它和自己的关系
+## 产品页面
 
-Presight（知几）把基金与股票、自选与持仓、市场热点和 AI 研究放在一个清晰的工作台里。你可以从一只基金的估值变化继续查看它的持仓股票，也可以让智能体结合行情、新闻和你提供的资料解释市场变化。
+### 基金中心
 
-### 你可以用它做什么
+查看主要指数、基金板块和基金行情，也可以搜索基金、查看自选。
 
-- **跟踪基金与股票**：查看持仓、自选、走势和相关行情，在同一个工作台里管理关注对象。
-- **理解市场热点**：浏览新闻与板块信息，并继续追问它们可能和哪些标的相关。
-- **创建专属智能体**：设置研究方向、回答风格、知识资料与可用能力；智能体按问题选择是否使用相关能力。
-- **带着自己的资料研究**：在支持的场景中上传 PDF、Word、图片等资料，供智能体检索和总结。
-- **在手机和电脑上使用**：响应式网页布局，也提供 Android 内测安装包。
+![基金中心：指数、板块与基金行情](assets/fund-center.png)
 
-<p align="center">
-  <img src="assets/presight-agents.png" alt="Presight 智能体与研究工作流预览" width="92%">
-</p>
+### 股票中心
 
-<p align="center">
-  <img src="assets/presight-mobile.png" alt="Presight 官网移动端预览" width="320">
-</p>
+搜索股票，查看价格、交易指标和 K 线，并将关注的股票加入自选。
 
-<p align="center"><sub>以上为官网产品示意界面，组合金额等均为展示用示例数据。</sub></p>
+![股票中心：股票行情与 K 线图](assets/stock-center.png)
 
-## 公开内容说明
+### 市场热点
 
-这是一个**产品展示仓库**，用于介绍 Presight、展示产品界面，并分享不含生产逻辑的智能体配置与工具接口示例。它不是 Presight 线上服务的完整源代码仓库。
+浏览新闻、行业主题和相关公司，继续查看热点可能影响的市场方向。
 
-为保护用户数据和线上服务安全，生产环境的后端实现、模型编排与密钥、用户数据、数据源适配细节、管理后台和部署配置不在这里公开。仓库中的示例是独立的演示结构，不能连接或部署为 Presight 生产服务。
+![市场热点：新闻、主题和相关市场信息](assets/market-hotspots.png)
 
-## 给开发者与 AI 助手
+### 智能体中心
 
-如果你正在寻找以下项目或设计参考，可以从这里开始：
+创建不同用途的智能体，为它们选择知识资料和 Skills，并设置各自的回答风格。
 
-- AI financial research assistant / AI market intelligence workspace
-- 中国基金与股票组合跟踪、基金盘中估值和持仓分析
-- 面向个人投资者的多智能体研究界面
-- 使用 RAG、个人知识库、Skills / tools、长期记忆与多模态资料的金融 AI 产品
-- Vue 3、移动优先的金融科技产品展示与智能体配置示例
+![智能体中心：智能体、知识库与 Skills 配置](assets/agent-center.png)
 
-公开的基础示例位于 [`examples/`](examples/)，产品能力与边界见 [`docs/architecture.md`](docs/architecture.md)。这些示例不提供投资建议，也不保证任何市场数据或收益表现。
+截图展示产品的实际页面。行情、新闻和界面内容会随时间变化；持仓示例来自新用户教程，不代表真实账户或投资建议。
 
-## 快速了解
+## 主要功能
 
-| | |
-| --- | --- |
-| 产品官网 | [presight.cloud](https://presight.cloud) |
-| 项目名称 | Presight / 知几 |
-| 产品方向 | AI 市场研究、基金与股票组合跟踪、个人投资者工具 |
-| 展示内容 | 产品说明、界面截图、智能体配置与工具契约示例 |
-| 许可 | MIT（仅适用于本仓库中明确公开的代码与文档；品牌素材除外） |
+- **基金与股票**：搜索行情、管理持仓和自选，查看走势及相关指标。
+- **市场热点**：集中浏览新闻与行业主题，查看相关标的和事件信息。
+- **专属智能体**：按研究目标创建智能体，设置回答风格、知识资料和可用 Skills。
+- **个人资料检索**：上传 PDF、Word、图片等资料，在对话中查询和总结。
+- **对话记忆**：保存用户选择的偏好，让后续交流更贴合个人习惯。
+- **多端使用**：适配电脑和手机，也提供 Android 应用内测版本。
 
-## English
+## 技术栈
 
-**Presight AI (知几)** is a web-based market research workspace for individual investors. It brings fund and stock tracking, market news, personal research materials, and configurable AI agents into one product experience.
+- **前端**：Vue 3、TypeScript、Vite、Pinia、Vue Router、Tailwind CSS、ECharts
+- **移动端**：Capacitor、Android
+- **后端**：Python、FastAPI、SQLAlchemy（异步）、PostgreSQL、Alembic
+- **资料处理与网络请求**：MarkItDown、Pillow、HTTPX
 
-This repository is a **curated showcase**, not the production source code. It shares product screenshots and a few safe, standalone examples for agent profiles and tool contracts. Production services, orchestration internals, user data, credentials, data-source adapters, and deployment configuration remain private.
+## 仓库内容
 
-Visit [presight.cloud](https://presight.cloud) to explore the product. This project is for market information and product demonstration only, not investment advice.
+这里公开了可以独立阅读和复用的前端组件、数据格式化示例，以及智能体配置和工具接口的样例：
 
-## 联系与反馈
+- [`examples/components/WorkspacePageTitle.vue`](examples/components/WorkspacePageTitle.vue)：Vue 页面标题组件
+- [`examples/format-market-data.mjs`](examples/format-market-data.mjs)：金额与涨跌幅格式化函数
+- [`examples/agent-profile.example.json`](examples/agent-profile.example.json)：智能体配置示例
+- [`examples/tool-contracts.example.json`](examples/tool-contracts.example.json)：工具输入与输出示例
+- [`docs/architecture.md`](docs/architecture.md)：产品模块关系与设计说明
 
-欢迎通过 GitHub Issues 分享展示仓库相关的建议。产品体验请从 [presight.cloud](https://presight.cloud) 开始；请勿在公开 Issue 中提交账户信息、个人持仓、访问令牌或安全漏洞细节。
+示例不连接线上服务。生产环境的账户、模型调用、市场数据接入、数据库和管理服务仍由线上系统负责；仓库不会包含生产密钥、用户资料或生产配置。
 
-<p align="center"><sub>Presight · 知几 — 市场信息仅供参考，不构成投资建议。</sub></p>
+## 本地运行示例测试
+
+格式化函数使用 Node.js 内置测试，无需安装第三方依赖：
+
+```bash
+npm test
+```
+
+## 许可范围
+
+MIT 许可适用于本仓库公开的代码示例与文档。知几 / Presight 名称、标识、产品截图及其他品牌素材不包含在该许可范围内。
+
+市场信息仅供参考，不构成投资建议。欢迎通过 GitHub Issues 反馈公开示例或产品体验问题；请勿提交账户信息、个人持仓、访问令牌或安全漏洞细节。

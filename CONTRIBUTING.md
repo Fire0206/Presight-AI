@@ -1,5 +1,5 @@
-# Contributing
+# 参与改进
 
-This repository is a curated product showcase. Suggestions about the public examples, README, or product experience are welcome through GitHub Issues.
+欢迎通过 GitHub Issues 反馈公开示例、文档和产品体验方面的建议。
 
-The production application and its private services are maintained separately. Do not submit credentials, personal financial data, private account details, or proprietary source code here.
+线上应用及其服务代码单独维护。请勿在这里提交密钥、个人财务信息、账户资料或未公开的生产代码。

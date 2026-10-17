@@ -1,0 +1,11 @@
+{
+  "name": "presight-public-examples",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test examples/format-market-data.test.mjs"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
