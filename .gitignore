@@ -1,0 +1,20 @@
+# Secrets and local configuration
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# Generated or private data
+*.db
+*.sqlite*
+uploads/
+private-data/
+logs/
+
+# Local development output
+node_modules/
+dist/
+output/
+.DS_Store
+Thumbs.db

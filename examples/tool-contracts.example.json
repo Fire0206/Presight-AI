@@ -1,0 +1,48 @@
+{
+  "version": "1.0",
+  "tools": [
+    {
+      "name": "get_market_snapshot",
+      "description": "Return a timestamped market snapshot for a supported symbol.",
+      "input": {
+        "type": "object",
+        "required": ["symbol"],
+        "properties": {
+          "symbol": { "type": "string", "description": "A public market symbol or index code." },
+          "period": { "type": "string", "enum": ["intraday", "5d", "1m", "1y"] }
+        }
+      },
+      "output": {
+        "symbol": "SAMPLE",
+        "as_of": "ISO-8601 timestamp",
+        "price": "number or null",
+        "change_percent": "number or null",
+        "source_status": "fresh | delayed | unavailable"
+      }
+    },
+    {
+      "name": "search_market_news",
+      "description": "Find recent public news items related to a topic.",
+      "input": {
+        "type": "object",
+        "required": ["query"],
+        "properties": {
+          "query": { "type": "string" },
+          "time_range": { "type": "string", "enum": ["24h", "7d", "30d"] },
+          "limit": { "type": "integer", "minimum": 1, "maximum": 10 }
+        }
+      },
+      "output": {
+        "items": [
+          {
+            "title": "Example headline",
+            "summary": "Short factual summary",
+            "published_at": "ISO-8601 timestamp",
+            "source_name": "Publisher",
+            "url": "https://example.com/article"
+          }
+        ]
+      }
+    }
+  ]
+}

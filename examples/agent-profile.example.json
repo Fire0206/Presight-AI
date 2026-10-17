@@ -1,0 +1,36 @@
+{
+  "name": "市场观察助手",
+  "description": "把市场信息整理成清晰、可追溯的研究摘要。",
+  "response_style": {
+    "language": "zh-CN",
+    "tone": "clear and neutral",
+    "format": "short sections with source notes"
+  },
+  "knowledge_sources": [
+    {
+      "id": "my-market-notes",
+      "kind": "user-provided",
+      "enabled": true
+    }
+  ],
+  "skills": [
+    {
+      "id": "market-summary",
+      "enabled": true,
+      "selection": "agent-decides-per-request"
+    },
+    {
+      "id": "news-context",
+      "enabled": true,
+      "selection": "agent-decides-per-request"
+    }
+  ],
+  "memory": {
+    "enabled": false,
+    "scope": "user-preferences"
+  },
+  "model": {
+    "public_alias": "default",
+    "provider_credentials": "managed-server-side"
+  }
+}
