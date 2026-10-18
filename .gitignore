@@ -17,5 +17,10 @@ node_modules/
 dist/
 output/
 .playwright-cli/
+.venv/
+venv/
+__pycache__/
+.pytest_cache/
+demo/backend/data/
 .DS_Store
 Thumbs.db
