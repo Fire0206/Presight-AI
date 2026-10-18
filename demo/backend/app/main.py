@@ -1,7 +1,7 @@
-"""Local-only API for the public Presight starter.
+"""FastAPI endpoints for market research and local portfolio examples.
 
-This app intentionally uses fictional sample market data. It does not connect
-to Presight production services, market-data providers, or AI model APIs.
+The overview defaults to sample data. Fund and stock providers are configurable
+through environment variables and remain server-side.
 """
 
 from __future__ import annotations
@@ -14,6 +14,8 @@ from typing import Annotated
 
 from fastapi import FastAPI, HTTPException, Path as PathParam, status
 from pydantic import BaseModel, ConfigDict, Field
+
+from .providers import fetch_market_data
 
 DEFAULT_DB_PATH = Path(__file__).resolve().parents[1] / "data" / "demo.sqlite3"
 
@@ -121,6 +123,14 @@ def create_app(db_path: Path = DEFAULT_DB_PATH) -> FastAPI:
     @app.get("/api/demo/overview")
     def get_overview() -> dict:
         return DEMO_OVERVIEW
+
+    @app.get("/api/market/funds")
+    async def get_fund_market_data() -> object:
+        return await fetch_market_data("fund")
+
+    @app.get("/api/market/stocks")
+    async def get_stock_market_data() -> object:
+        return await fetch_market_data("stock")
 
     @app.get("/api/demo/watchlist")
     def get_watchlist() -> list[dict]:

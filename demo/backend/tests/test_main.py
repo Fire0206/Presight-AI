@@ -1,5 +1,7 @@
+import httpx
 from fastapi.testclient import TestClient
 
+from app import providers
 from app.main import create_app
 
 
@@ -53,3 +55,44 @@ def test_watchlist_rejects_duplicates_and_invalid_codes(tmp_path):
     assert first.status_code == 201
     assert duplicate.status_code == 409
     assert invalid.status_code == 422
+
+
+def test_market_endpoints_explain_when_provider_is_not_configured(tmp_path, monkeypatch):
+    monkeypatch.delenv("FUND_MARKET_API_URL", raising=False)
+    monkeypatch.delenv("STOCK_MARKET_API_URL", raising=False)
+    app = create_app(tmp_path / "test.sqlite3")
+
+    with TestClient(app) as client:
+        funds = client.get("/api/market/funds")
+        stocks = client.get("/api/market/stocks")
+
+    assert funds.status_code == 503
+    assert "基金" in funds.json()["detail"]
+    assert stocks.status_code == 503
+    assert "股票" in stocks.json()["detail"]
+
+
+def test_market_endpoint_uses_configured_url_and_server_side_auth(tmp_path, monkeypatch):
+    monkeypatch.setenv("FUND_MARKET_API_URL", "https://provider.example/v1/funds")
+    monkeypatch.setenv("FUND_MARKET_API_KEY", "test-key")
+    monkeypatch.setenv("FUND_MARKET_API_KEY_HEADER", "X-Api-Key")
+    monkeypatch.setenv("FUND_MARKET_API_AUTH_SCHEME", "")
+
+    def handle_request(request: httpx.Request) -> httpx.Response:
+        assert str(request.url) == "https://provider.example/v1/funds"
+        assert request.headers["X-Api-Key"] == "test-key"
+        return httpx.Response(200, json={"items": [{"code": "000001", "name": "示例基金"}]})
+
+    transport = httpx.MockTransport(handle_request)
+    monkeypatch.setattr(
+        providers,
+        "create_http_client",
+        lambda: httpx.AsyncClient(transport=transport, timeout=1),
+    )
+    app = create_app(tmp_path / "test.sqlite3")
+
+    with TestClient(app) as client:
+        response = client.get("/api/market/funds")
+
+    assert response.status_code == 200
+    assert response.json() == {"items": [{"code": "000001", "name": "示例基金"}]}
