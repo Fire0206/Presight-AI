@@ -54,13 +54,13 @@
 - **后端**：Python、FastAPI、SQLAlchemy（异步）、PostgreSQL、Alembic
 - **资料处理与网络请求**：MarkItDown、Pillow、HTTPX
 
-## 本地运行与数据源接入
+## 本地工作台
 
-仓库包含可启动的 Vue 前端和 FastAPI 后端：工作台展示指数、基金和市场资讯，用户自选保存在本地 SQLite；后端也提供基金与股票数据源接口，可由使用者配置服务地址和认证方式。
+仓库包含可启动的 Vue 前端和 FastAPI 后端，页面涵盖基金、股票、市场热点和智能体对话工作区；基金自选保存在本地 SQLite。工作台里的指数、基金、股票与新闻使用固定在 **2026-10-16 15:00（北京时间）** 的演示快照，不会随着访问时间变化。
 
-Windows、macOS 和 Linux 的完整安装步骤、接口说明及测试方式见 [`demo/README.md`](demo/README.md)。基金与股票接口参数示例在 [`demo/backend/.env.example`](demo/backend/.env.example)；将其复制为 `.env`，填入自己所用数据服务商的地址和密钥即可。密钥只在后端读取，不会发往浏览器。
+Windows、macOS 和 Linux 的安装、启动及测试步骤见 [`demo/README.md`](demo/README.md)。基金与股票数据源的配置位置在 [`demo/backend/.env.example`](demo/backend/.env.example)：复制为 `.env` 后填写自己选择的数据服务地址和认证信息，密钥由后端读取，不会发往浏览器。
 
-行情服务的响应格式因供应商而异；接口返回服务商的 JSON 响应，按需映射字段即可接入工作台。未配置外部行情源时，页面仍可使用内置样例数据运行。也可以先运行根目录的格式化示例测试：
+智能体页面保留了对话区和配置能力的界面预览；本地工作台不会发送模型请求。行情服务的响应格式因供应商而异，接口会返回 JSON 响应，按需映射字段即可接入自己的工作台。也可以先运行根目录的格式化示例测试：
 
 ```bash
 npm test

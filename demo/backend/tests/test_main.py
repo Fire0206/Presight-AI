@@ -14,8 +14,23 @@ def test_health_and_demo_data_are_explicitly_labeled(tmp_path):
     assert health.status_code == 200
     assert health.json() == {"status": "ok", "mode": "demo"}
     assert overview.status_code == 200
-    assert overview.json()["data_mode"] == "fictional-demo"
-    assert "虚构示例" in overview.json()["notice"]
+    payload = overview.json()
+    assert payload["data_mode"] == "frozen-demo-snapshot"
+    assert payload["snapshot_at"] == "2026-10-16T15:00:00+08:00"
+    assert "固定于 2026-10-16 15:00" in payload["notice"]
+    assert len(payload["funds"]) == 3
+    assert len(payload["stocks"]) == 3
+    assert len(payload["headlines"]) == 2
+
+
+def test_market_snapshot_does_not_change_between_requests(tmp_path):
+    app = create_app(tmp_path / "test.sqlite3")
+    with TestClient(app) as client:
+        first = client.get("/api/demo/overview").json()
+        second = client.get("/api/demo/overview").json()
+
+    assert first == second
+    assert all(item["published_at"].startswith("2026-10-16T") for item in first["headlines"])
 
 
 def test_watchlist_can_be_created_listed_and_removed(tmp_path):

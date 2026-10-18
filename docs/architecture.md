@@ -23,4 +23,4 @@ flowchart LR
 - Provider credentials and private account data belong behind authenticated server-side services, never in a browser bundle or public example.
 - Market information may be delayed or estimated. The product should show source timing and distinguish estimates from confirmed values.
 
-The JSON files in [`../examples/`](../examples/) are illustrative interface samples. They do not expose production APIs, provider routing, data-source adapters, or deployment details.
+The JSON files in [`../examples/`](../examples/) are illustrative interface samples. The runnable local workbench uses a fixed display snapshot and keeps provider credentials in local environment configuration.

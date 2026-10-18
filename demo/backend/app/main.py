@@ -1,7 +1,7 @@
-"""FastAPI endpoints for market research and local portfolio examples.
+"""FastAPI endpoints for a frozen local market snapshot and local examples.
 
-The overview defaults to sample data. Fund and stock providers are configurable
-through environment variables and remain server-side.
+Market snapshot values are static display data. Fund and stock providers can
+optionally be configured by the local operator through environment variables.
 """
 
 from __future__ import annotations
@@ -19,9 +19,13 @@ from .providers import fetch_market_data
 
 DEFAULT_DB_PATH = Path(__file__).resolve().parents[1] / "data" / "demo.sqlite3"
 
+DEMO_SNAPSHOT_AT = "2026-10-16T15:00:00+08:00"
+
 DEMO_OVERVIEW = {
-    "data_mode": "fictional-demo",
-    "notice": "页面内数字为虚构示例，仅用于演示界面和 API，不代表实时行情。",
+    "data_mode": "frozen-demo-snapshot",
+    "snapshot_at": DEMO_SNAPSHOT_AT,
+    "snapshot_label": "2026-10-16 收盘快照",
+    "notice": "页面展示的是固定于 2026-10-16 15:00（北京时间）的虚构快照，仅用于界面预览，不代表真实行情，也不会自动更新。",
     "indices": [
         {"name": "上证指数", "value": 3726.28, "change_percent": 0.24},
         {"name": "沪深 300", "value": 4216.85, "change_percent": 0.31},
@@ -54,6 +58,47 @@ DEMO_OVERVIEW = {
             "series": [18, 21, 19, 29, 26, 32, 37, 33, 43, 47, 45, 61],
         },
     ],
+    "stocks": [
+        {
+            "code": "DEMO-SH-601398",
+            "name": "示例银行",
+            "market": "沪市主板",
+            "sector": "银行",
+            "price": 6.18,
+            "change_percent": 0.49,
+            "open": 6.15,
+            "high": 6.22,
+            "low": 6.12,
+            "turnover": "示例成交额 18.6 亿",
+            "series": [28, 31, 29, 34, 33, 38, 36, 42, 40, 45],
+        },
+        {
+            "code": "DEMO-SZ-000858",
+            "name": "示例消费",
+            "market": "深市主板",
+            "sector": "食品饮料",
+            "price": 128.40,
+            "change_percent": -1.26,
+            "open": 130.10,
+            "high": 130.80,
+            "low": 127.60,
+            "turnover": "示例成交额 32.4 亿",
+            "series": [55, 53, 57, 48, 50, 44, 46, 38, 41, 35],
+        },
+        {
+            "code": "DEMO-SZ-300750",
+            "name": "示例新能源",
+            "market": "创业板",
+            "sector": "电池",
+            "price": 246.80,
+            "change_percent": 2.14,
+            "open": 241.20,
+            "high": 248.60,
+            "low": 239.50,
+            "turnover": "示例成交额 56.1 亿",
+            "series": [18, 21, 20, 27, 24, 34, 32, 42, 47, 58],
+        },
+    ],
     "sectors": [
         {"name": "人工智能", "change_percent": 1.82, "related_funds": 3},
         {"name": "高端制造", "change_percent": 0.74, "related_funds": 2},
@@ -64,11 +109,15 @@ DEMO_OVERVIEW = {
             "title": "示例资讯：政策动向带动相关行业关注度上升",
             "category": "政策观察",
             "summary": "这是用于本地演示的虚构新闻摘要，不对应真实事件。",
+            "source": "演示资讯",
+            "published_at": "2026-10-16T13:45:00+08:00",
         },
         {
             "title": "示例资讯：市场成交结构出现阶段性变化",
             "category": "市场观察",
             "summary": "正式产品会结合新闻和行情展示相关信息；此处仅用于界面预览。",
+            "source": "演示资讯",
+            "published_at": "2026-10-16T10:30:00+08:00",
         },
     ],
 }
@@ -111,7 +160,7 @@ def create_app(db_path: Path = DEFAULT_DB_PATH) -> FastAPI:
 
     app = FastAPI(
         title="知几 Presight 本地示例 API",
-        description="只提供虚构演示数据和本地自选列表，不连接线上服务。",
+        description="提供固定行情快照、本地自选列表示例，以及可自行配置的基金和股票数据源接口。",
         version="2.0.0",
         lifespan=lifespan,
     )

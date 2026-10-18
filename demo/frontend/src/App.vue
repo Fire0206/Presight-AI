@@ -4,8 +4,8 @@ import {
   Activity,
   ArrowRight,
   CheckCircle2,
-  CircleHelp,
   Clock3,
+  CircleHelp,
   ExternalLink,
   LayoutDashboard,
   Newspaper,
@@ -26,19 +26,36 @@ type DemoFund = {
   nav_label: string
   series: number[]
 }
+type DemoStock = {
+  code: string
+  name: string
+  market: string
+  sector: string
+  price: number
+  change_percent: number
+  open: number
+  high: number
+  low: number
+  turnover: string
+  series: number[]
+}
 type Sector = { name: string; change_percent: number; related_funds: number }
-type Headline = { title: string; category: string; summary: string }
+type Headline = { title: string; category: string; summary: string; source: string; published_at: string }
 type Overview = {
   data_mode: string
+  snapshot_at: string
+  snapshot_label: string
   notice: string
   indices: IndexItem[]
   funds: DemoFund[]
+  stocks: DemoStock[]
   sectors: Sector[]
   headlines: Headline[]
 }
 type WatchlistEntry = { id: number; code: string; name: string; created_at: string }
 
-const page = ref<'funds' | 'news'>('funds')
+type Page = 'funds' | 'stocks' | 'news' | 'agent'
+const page = ref<Page>('funds')
 const overview = ref<Overview | null>(null)
 const watchlist = ref<WatchlistEntry[]>([])
 const search = ref('')
@@ -56,8 +73,22 @@ const funds = computed(() => {
   )
 })
 
+const stocks = computed(() => {
+  const keyword = search.value.trim().toLowerCase()
+  if (!keyword) return overview.value?.stocks ?? []
+  return (overview.value?.stocks ?? []).filter((stock) =>
+    `${stock.name} ${stock.code} ${stock.sector} ${stock.market}`.toLowerCase().includes(keyword),
+  )
+})
+
 const isTracked = (code: string) => watchlist.value.some((item) => item.code === code)
-const title = computed(() => page.value === 'funds' ? '基金中心' : '市场热点')
+const titles: Record<Page, string> = {
+  funds: '基金中心',
+  stocks: '股票中心',
+  news: '市场热点',
+  agent: '智能体工作区',
+}
+const title = computed(() => titles[page.value])
 
 function formatPercent(value: number) {
   return `${value > 0 ? '+' : ''}${value.toFixed(2)}%`
@@ -73,6 +104,17 @@ function sparkline(values: number[]) {
     const y = 30 - ((value - min) / range) * 25
     return `${x},${y}`
   }).join(' ')
+}
+
+function formatSnapshotTime(value: string) {
+  if (!value) return '—'
+  return new Intl.DateTimeFormat('zh-CN', {
+    timeZone: 'Asia/Shanghai',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+  }).format(new Date(value))
 }
 
 async function loadData(showRefresh = false) {
@@ -148,9 +190,17 @@ onMounted(() => loadData())
           <LayoutDashboard :size="18" />
           <span>基金中心</span>
         </button>
+        <button :class="['nav-item', { active: page === 'stocks' }]" @click="page = 'stocks'">
+          <Activity :size="18" />
+          <span>股票中心</span>
+        </button>
         <button :class="['nav-item', { active: page === 'news' }]" @click="page = 'news'">
           <Newspaper :size="18" />
           <span>市场热点</span>
+        </button>
+        <button :class="['nav-item', { active: page === 'agent' }]" @click="page = 'agent'">
+          <Sparkles :size="18" />
+          <span>智能体</span>
         </button>
       </nav>
 
@@ -169,7 +219,8 @@ onMounted(() => loadData())
           <h1>{{ title }}</h1>
         </div>
         <div class="topbar-actions">
-          <span class="demo-badge"><span class="status-dot"></span>示例数据 · 非实时</span>
+          <span class="snapshot-time"><Clock3 :size="14" />截至 {{ overview?.snapshot_label ?? '固定快照' }}</span>
+          <span class="demo-badge"><span class="status-dot"></span>固定快照 · 非实时</span>
           <a class="website-link" href="https://presight.cloud" target="_blank" rel="noreferrer">
             体验线上产品 <ArrowRight :size="15" />
           </a>
@@ -185,12 +236,12 @@ onMounted(() => loadData())
         <template v-if="page === 'funds'">
           <section class="intro-row">
             <div>
-              <p class="eyebrow">市场快照</p>
-              <h2>先看市场，再看基金</h2>
-              <p class="intro-copy">指数、板块和基金示例放在同一页，适合体验页面和 API 的基本连接。</p>
+              <p class="eyebrow">基金市场 · 固定快照</p>
+              <h2>基金行情</h2>
+              <p class="intro-copy">指数、板块和基金示例来自同一份静态快照，可浏览行情布局并试用本地自选。</p>
             </div>
             <button class="button button-light refresh-button" :disabled="updating" @click="loadData(true)">
-              <RefreshCw :size="15" :class="{ spinning: updating }" /> 刷新示例
+              <RefreshCw :size="15" :class="{ spinning: updating }" /> 重新载入快照
             </button>
           </section>
 
@@ -206,13 +257,13 @@ onMounted(() => loadData())
 
           <section class="section-block">
             <div class="section-heading">
-              <div><p class="eyebrow">基金行情</p><h2>盘中估值示例</h2></div>
+              <div><p class="eyebrow">基金行情</p><h2>基金列表</h2></div>
               <label class="search-box">
                 <Search :size="16" />
                 <input v-model="search" type="search" placeholder="搜索示例基金" aria-label="搜索示例基金" />
               </label>
             </div>
-            <p class="data-disclaimer"><Clock3 :size="14" /> 下方估值和曲线为虚构数据，只演示前端展示方式。</p>
+            <p class="data-disclaimer"><Clock3 :size="14" /> {{ overview?.snapshot_label }} · 估值、净值和曲线均为固定演示数据。</p>
 
             <div v-if="loading" class="loading-panel">正在连接本地演示 API…</div>
             <div v-else-if="funds.length" class="fund-list">
@@ -240,7 +291,7 @@ onMounted(() => loadData())
           </section>
 
           <section class="section-block sector-section">
-            <div class="section-heading"><div><p class="eyebrow">市场观察</p><h2>板块表现</h2></div><span class="muted-note">仅供界面演示</span></div>
+            <div class="section-heading"><div><p class="eyebrow">市场观察</p><h2>板块表现</h2></div><span class="muted-note">固定快照</span></div>
             <div class="sector-grid">
               <article v-for="sector in overview?.sectors ?? []" :key="sector.name" class="sector-card">
                 <div><b>{{ sector.name }}</b><small>{{ sector.related_funds }} 只关联示例基金</small></div>
@@ -250,21 +301,85 @@ onMounted(() => loadData())
           </section>
         </template>
 
-        <template v-else>
+        <template v-else-if="page === 'stocks'">
           <section class="intro-row">
             <div>
-              <p class="eyebrow">热点资讯</p>
-              <h2>新闻与市场主题</h2>
-              <p class="intro-copy">真实产品中可以结合新闻和行情继续研究；这个公开示例不会接入新闻源。</p>
+              <p class="eyebrow">股票市场 · 固定快照</p>
+              <h2>股票行情</h2>
+              <p class="intro-copy">展示价格、涨跌、日内区间和走势组件。接入自己的数据源后，可按供应商字段映射。</p>
             </div>
-            <span class="demo-badge"><span class="status-dot"></span>虚构资讯</span>
+            <span class="demo-badge"><span class="status-dot"></span>{{ overview?.snapshot_label }}</span>
+          </section>
+          <section class="section-block stock-section">
+            <div class="section-heading">
+              <div><p class="eyebrow">A 股示例</p><h2>股票列表</h2></div>
+              <label class="search-box">
+                <Search :size="16" />
+                <input v-model="search" type="search" placeholder="搜索示例股票" aria-label="搜索示例股票" />
+              </label>
+            </div>
+            <p class="data-disclaimer"><Clock3 :size="14" /> 固定于 {{ formatSnapshotTime(overview?.snapshot_at ?? '') }}（北京时间），不是实时行情。</p>
+            <div v-if="loading" class="loading-panel">正在读取本地快照…</div>
+            <div v-else-if="stocks.length" class="stock-list">
+              <article v-for="stock in stocks" :key="stock.code" class="stock-row">
+                <div class="stock-identity">
+                  <span class="stock-avatar"><Activity :size="17" /></span>
+                  <div><b>{{ stock.name }}</b><small>{{ stock.code }} · {{ stock.market }} · {{ stock.sector }}</small></div>
+                </div>
+                <div class="fund-sparkline stock-sparkline" aria-hidden="true">
+                  <svg viewBox="0 0 100 34" preserveAspectRatio="none"><polyline :points="sparkline(stock.series)" /></svg>
+                </div>
+                <div class="stock-quote">
+                  <strong>{{ stock.price.toFixed(2) }}</strong>
+                  <span :class="stock.change_percent < 0 ? 'negative' : 'positive'">{{ formatPercent(stock.change_percent) }}</span>
+                </div>
+                <div class="stock-range"><span>开 {{ stock.open.toFixed(2) }}</span><span>高 {{ stock.high.toFixed(2) }}</span><span>低 {{ stock.low.toFixed(2) }}</span><small>{{ stock.turnover }}</small></div>
+              </article>
+            </div>
+            <p v-else class="empty-state">没有找到匹配的示例股票。</p>
+          </section>
+          <section class="stock-note"><Activity :size="18" /><div><b>数据源接入位置</b><p>后端已留出基金与股票数据接口。请在本地配置自己的供应商 URL 和认证信息，密钥只由后端读取。</p></div></section>
+        </template>
+
+        <template v-else-if="page === 'news'">
+          <section class="intro-row">
+            <div>
+              <p class="eyebrow">市场热点 · 固定快照</p>
+              <h2>新闻与市场主题</h2>
+              <p class="intro-copy">浏览带有发布时间的示例新闻卡片。当前列表与行情快照一同固定，不会自动拉取网络内容。</p>
+            </div>
+            <span class="demo-badge"><span class="status-dot"></span>固定资讯快照</span>
           </section>
           <section class="news-list">
             <article v-for="(headline, index) in overview?.headlines ?? []" :key="headline.title" class="news-card">
               <div class="news-index">{{ String(index + 1).padStart(2, '0') }}</div>
-              <div class="news-content"><span class="news-category">{{ headline.category }}</span><h3>{{ headline.title }}</h3><p>{{ headline.summary }}</p></div>
-              <ArrowRight class="news-arrow" :size="18" />
+              <div class="news-content"><span class="news-category">{{ headline.category }}</span><h3>{{ headline.title }}</h3><p>{{ headline.summary }}</p><small class="news-meta">{{ headline.source }} · {{ formatSnapshotTime(headline.published_at) }}</small></div>
             </article>
+          </section>
+        </template>
+
+        <template v-else>
+          <section class="intro-row">
+            <div>
+              <p class="eyebrow">智能体 · 对话界面预览</p>
+              <h2>知几研究助手</h2>
+              <p class="intro-copy">保留对话工作区的布局和交互入口。此页面使用静态示例，不会发送问题或调用模型。</p>
+            </div>
+            <span class="agent-status"><span></span>本地预览</span>
+          </section>
+          <section class="agent-preview">
+            <div class="agent-preview-head"><span class="agent-mark"><Sparkles :size="18" /></span><div><b>观潮</b><small>市场入门助手 · 对话预览</small></div></div>
+            <div class="agent-thread">
+              <div class="agent-message user-message">能不能帮我看看基金和股票的市场信息？</div>
+              <div class="agent-reply"><span class="agent-reply-mark"><Sparkles :size="15" /></span><div><b>观潮</b><p>这里会显示智能体的结构化回复。你可以在本地为对话接入自己的模型服务；当前仓库只展示界面，不会发出 AI 请求。</p><div class="reply-tags"><span>市场数据</span><span>个人资料</span><span>Skills</span></div></div></div>
+            </div>
+            <div class="agent-composer"><div class="composer-placeholder">接入 AI 服务后，可在这里输入问题</div><button class="button button-primary" disabled><Sparkles :size="15" /> 发送</button></div>
+            <p class="agent-footnote">示例对话为静态内容；模型、提示词、工具调用和知识检索没有在此处实现。</p>
+          </section>
+          <section class="agent-capabilities">
+            <article><span>01</span><b>对话与回答</b><p>消息列表、输入区和回复排版的前端结构。</p></article>
+            <article><span>02</span><b>智能体资料</b><p>可用于展示风格、Skills 与知识资料选择状态。</p></article>
+            <article><span>03</span><b>数据上下文</b><p>可在本地将行情服务和用户自己的数据连接进来。</p></article>
           </section>
         </template>
 
@@ -273,17 +388,17 @@ onMounted(() => loadData())
     </div>
 
     <aside class="context-panel">
-      <div class="context-heading"><span class="context-icon"><Sparkles :size="17" /></span><div><b>使用说明</b><small>本地示例与线上产品的区别</small></div></div>
+      <div class="context-heading"><span class="context-icon"><Sparkles :size="17" /></span><div><b>工作台说明</b><small>数据与功能状态</small></div></div>
       <article class="context-card">
-        <span class="context-tag">本地 API</span>
-        <h2>可以启动，也可以改</h2>
-        <p>页面通过 FastAPI 读取示例行情，并把自选列表保存到本地 SQLite 文件。</p>
-        <div class="context-check"><CheckCircle2 :size="16" /><span>包含前端、后端和测试</span></div>
-        <div class="context-check"><CheckCircle2 :size="16" /><span>没有账号或线上密钥</span></div>
+        <span class="context-tag">{{ overview?.snapshot_label ?? '固定快照' }}</span>
+        <h2>静态市场数据</h2>
+        <p>指数、基金、股票和资讯共用同一时点的演示快照，打开页面不会抓取行情或新闻。</p>
+        <div class="context-check"><CheckCircle2 :size="16" /><span>自选列表保存在本地</span></div>
+        <div class="context-check"><CheckCircle2 :size="16" /><span>数据源密钥仅由后端读取</span></div>
       </article>
       <article class="context-card subtle-card">
         <span class="context-tag">线上知几</span>
-        <h2>体验完整功能</h2>
+        <h2>打开知几工作台</h2>
         <p>线上产品提供基金估值、股票行情、市场热点和可配置的 AI 研究助手。</p>
         <a href="https://presight.cloud" target="_blank" rel="noreferrer">打开 presight.cloud <ExternalLink :size="14" /></a>
       </article>
@@ -299,8 +414,9 @@ onMounted(() => loadData())
 
     <nav class="mobile-nav" aria-label="移动端演示导航">
       <button :class="{ active: page === 'funds' }" @click="page = 'funds'"><LayoutDashboard :size="18" /><span>基金</span></button>
+      <button :class="{ active: page === 'stocks' }" @click="page = 'stocks'"><Activity :size="18" /><span>股票</span></button>
       <button :class="{ active: page === 'news' }" @click="page = 'news'"><Newspaper :size="18" /><span>热点</span></button>
-      <a href="https://presight.cloud" target="_blank" rel="noreferrer"><ExternalLink :size="18" /><span>线上体验</span></a>
+      <button :class="{ active: page === 'agent' }" @click="page = 'agent'"><Sparkles :size="18" /><span>智能体</span></button>
     </nav>
   </div>
 </template>
