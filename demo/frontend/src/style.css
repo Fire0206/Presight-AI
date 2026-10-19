@@ -28,6 +28,8 @@ a { color: inherit; text-decoration: none; }
 button:focus-visible, a:focus-visible, input:focus-visible { outline: 3px solid rgb(89 101 245 / 42%); outline-offset: 2px; }
 
 .workspace-shell { min-height: 100vh; display: grid; grid-template-columns: 226px minmax(500px, 1fr) 292px; }
+.skip-link { position: fixed; z-index: 50; top: 8px; left: 8px; padding: 10px 13px; color: #fff; background: var(--blue); border-radius: 8px; font-size: 12px; font-weight: 750; transform: translateY(-150%); transition: transform .18s; }
+.skip-link:focus { transform: translateY(0); }
 .sidebar { position: sticky; top: 0; height: 100vh; display: flex; flex-direction: column; padding: 25px 16px 18px; background: #fff; border-right: 1px solid var(--line); }
 .brand { display: flex; align-items: center; gap: 10px; padding: 0 7px; margin-bottom: 43px; width: fit-content; }
 .brand-mark { display: grid; width: 38px; height: 38px; place-items: center; color: #fff; background: linear-gradient(145deg, #7780ff, #4d5af1); border-radius: 13px; box-shadow: 0 8px 16px rgb(89 101 245 / 22%); }
@@ -281,7 +283,7 @@ button:focus-visible, a:focus-visible, input:focus-visible { outline: 3px solid 
   .agent-capabilities article { min-height: 0; padding: 11px 12px; }
   .agent-capabilities b { margin-top: 4px; }
   .action-notice { right: 12px; bottom: calc(74px + env(safe-area-inset-bottom)); max-width: calc(100vw - 24px); }
-  .mobile-nav { position: fixed; z-index: 10; right: 0; bottom: 0; left: 0; display: grid; grid-template-columns: repeat(4, 1fr); min-height: calc(64px + env(safe-area-inset-bottom)); padding: 6px 8px env(safe-area-inset-bottom); background: rgb(255 255 255 / 97%); border-top: 1px solid var(--line); box-shadow: 0 -6px 20px rgb(36 52 100 / 5%); }
+  .mobile-nav { position: fixed; z-index: 10; right: 0; bottom: 0; left: 0; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); min-height: calc(64px + env(safe-area-inset-bottom)); padding: 6px 8px env(safe-area-inset-bottom); background: rgb(255 255 255 / 97%); border-top: 1px solid var(--line); box-shadow: 0 -6px 20px rgb(36 52 100 / 5%); }
   .mobile-nav button, .mobile-nav a { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; color: #78849b; background: transparent; border: 0; font-size: 9px; font-weight: 700; }
   .mobile-nav button.active { color: var(--blue); }
 }

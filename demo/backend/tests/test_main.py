@@ -48,6 +48,7 @@ def test_watchlist_can_be_created_listed_and_removed(tmp_path):
     assert created.json()["code"] == "DEMO01"
     assert listed.json()[0]["name"] == "示例基金"
     assert removed.status_code == 204
+    assert removed.content == b""
     assert listed_after_remove.json() == []
 
 

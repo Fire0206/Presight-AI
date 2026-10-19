@@ -12,7 +12,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Annotated
 
-from fastapi import FastAPI, HTTPException, Path as PathParam, status
+from fastapi import FastAPI, HTTPException, Path as PathParam, Response, status
 from pydantic import BaseModel, ConfigDict, Field
 
 from .providers import fetch_market_data
@@ -206,10 +206,14 @@ def create_app(db_path: Path = DEFAULT_DB_PATH) -> FastAPI:
             raise HTTPException(status_code=409, detail="这个示例代码已经在自选里了") from exc
         return dict(row)
 
-    @app.delete("/api/demo/watchlist/{item_id}", status_code=status.HTTP_204_NO_CONTENT)
+    @app.delete(
+        "/api/demo/watchlist/{item_id}",
+        status_code=status.HTTP_204_NO_CONTENT,
+        response_class=Response,
+    )
     def remove_from_watchlist(
         item_id: Annotated[int, PathParam(ge=1)],
-    ) -> None:
+    ) -> Response:
         with connect(app.state.db_path) as connection:
             cursor = connection.execute(
                 "DELETE FROM demo_watchlist WHERE id = ?",
@@ -217,6 +221,7 @@ def create_app(db_path: Path = DEFAULT_DB_PATH) -> FastAPI:
             )
         if cursor.rowcount == 0:
             raise HTTPException(status_code=404, detail="没有找到这条示例自选")
+        return Response(status_code=status.HTTP_204_NO_CONTENT)
 
     return app
 

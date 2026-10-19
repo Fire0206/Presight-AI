@@ -16,6 +16,8 @@ import {
   Trash2,
   WalletCards,
 } from '@lucide/vue'
+import DemoAgentStudio from './components/DemoAgentStudio.vue'
+import DemoPortfolio from './components/DemoPortfolio.vue'
 
 type IndexItem = { name: string; value: number; change_percent: number }
 type DemoFund = {
@@ -54,7 +56,7 @@ type Overview = {
 }
 type WatchlistEntry = { id: number; code: string; name: string; created_at: string }
 
-type Page = 'funds' | 'stocks' | 'news' | 'agent'
+type Page = 'funds' | 'stocks' | 'portfolio' | 'news' | 'agent'
 const page = ref<Page>('funds')
 const overview = ref<Overview | null>(null)
 const watchlist = ref<WatchlistEntry[]>([])
@@ -85,8 +87,9 @@ const isTracked = (code: string) => watchlist.value.some((item) => item.code ===
 const titles: Record<Page, string> = {
   funds: '基金中心',
   stocks: '股票中心',
+  portfolio: '持仓管理',
   news: '市场热点',
-  agent: '智能体工作区',
+  agent: '智能体中心',
 }
 const title = computed(() => titles[page.value])
 
@@ -178,6 +181,7 @@ onMounted(() => loadData())
 
 <template>
   <div class="workspace-shell">
+    <a class="skip-link" href="#main-content">跳至主要内容</a>
     <aside class="sidebar">
       <a class="brand" href="https://presight.cloud" aria-label="前往知几 Presight 官网">
         <span class="brand-mark"><Sparkles :size="19" :stroke-width="2.5" /></span>
@@ -193,6 +197,10 @@ onMounted(() => loadData())
         <button :class="['nav-item', { active: page === 'stocks' }]" @click="page = 'stocks'">
           <Activity :size="18" />
           <span>股票中心</span>
+        </button>
+        <button :class="['nav-item', { active: page === 'portfolio' }]" @click="page = 'portfolio'">
+          <WalletCards :size="18" />
+          <span>持仓管理</span>
         </button>
         <button :class="['nav-item', { active: page === 'news' }]" @click="page = 'news'">
           <Newspaper :size="18" />
@@ -227,8 +235,8 @@ onMounted(() => loadData())
         </div>
       </header>
 
-      <main class="content">
-        <div v-if="error" class="connection-error" role="alert">
+      <main id="main-content" class="content">
+        <div v-if="error && ['funds', 'stocks', 'news'].includes(page)" class="connection-error" role="alert">
           <div><b>暂时无法读取演示数据</b><span>{{ error }}</span></div>
           <button class="button button-light" @click="loadData(true)"><RefreshCw :size="15" /> 重试</button>
         </div>
@@ -358,30 +366,8 @@ onMounted(() => loadData())
           </section>
         </template>
 
-        <template v-else>
-          <section class="intro-row">
-            <div>
-              <p class="eyebrow">智能体 · 对话界面预览</p>
-              <h2>知几研究助手</h2>
-              <p class="intro-copy">保留对话工作区的布局和交互入口。此页面使用静态示例，不会发送问题或调用模型。</p>
-            </div>
-            <span class="agent-status"><span></span>本地预览</span>
-          </section>
-          <section class="agent-preview">
-            <div class="agent-preview-head"><span class="agent-mark"><Sparkles :size="18" /></span><div><b>观潮</b><small>市场入门助手 · 对话预览</small></div></div>
-            <div class="agent-thread">
-              <div class="agent-message user-message">能不能帮我看看基金和股票的市场信息？</div>
-              <div class="agent-reply"><span class="agent-reply-mark"><Sparkles :size="15" /></span><div><b>观潮</b><p>这里会显示智能体的结构化回复。你可以在本地为对话接入自己的模型服务；当前仓库只展示界面，不会发出 AI 请求。</p><div class="reply-tags"><span>市场数据</span><span>个人资料</span><span>Skills</span></div></div></div>
-            </div>
-            <div class="agent-composer"><div class="composer-placeholder">接入 AI 服务后，可在这里输入问题</div><button class="button button-primary" disabled><Sparkles :size="15" /> 发送</button></div>
-            <p class="agent-footnote">示例对话为静态内容；模型、提示词、工具调用和知识检索没有在此处实现。</p>
-          </section>
-          <section class="agent-capabilities">
-            <article><span>01</span><b>对话与回答</b><p>消息列表、输入区和回复排版的前端结构。</p></article>
-            <article><span>02</span><b>智能体资料</b><p>可用于展示风格、Skills 与知识资料选择状态。</p></article>
-            <article><span>03</span><b>数据上下文</b><p>可在本地将行情服务和用户自己的数据连接进来。</p></article>
-          </section>
-        </template>
+        <DemoPortfolio v-else-if="page === 'portfolio'" />
+        <DemoAgentStudio v-else />
 
         <p v-if="notice" class="action-notice" role="status">{{ notice }}</p>
       </main>
@@ -415,6 +401,7 @@ onMounted(() => loadData())
     <nav class="mobile-nav" aria-label="移动端演示导航">
       <button :class="{ active: page === 'funds' }" @click="page = 'funds'"><LayoutDashboard :size="18" /><span>基金</span></button>
       <button :class="{ active: page === 'stocks' }" @click="page = 'stocks'"><Activity :size="18" /><span>股票</span></button>
+      <button :class="{ active: page === 'portfolio' }" @click="page = 'portfolio'"><WalletCards :size="18" /><span>持仓</span></button>
       <button :class="{ active: page === 'news' }" @click="page = 'news'"><Newspaper :size="18" /><span>热点</span></button>
       <button :class="{ active: page === 'agent' }" @click="page = 'agent'"><Sparkles :size="18" /><span>智能体</span></button>
     </nav>
