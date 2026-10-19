@@ -3,7 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "node --test examples/format-market-data.test.mjs"
+    "test": "node --test examples/format-market-data.test.mjs examples/holding-accounting.test.mjs examples/answer-markdown.test.mjs"
   },
   "engines": {
     "node": ">=18"

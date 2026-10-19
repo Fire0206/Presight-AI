@@ -17,6 +17,7 @@ import {
   Trash2,
   X,
 } from '@lucide/vue'
+import AnswerRenderer from './AnswerRenderer.vue'
 
 type DemoAgent = {
   id: string
@@ -54,13 +55,15 @@ const knowledgeSources = ref<KnowledgeSource[]>([...initialKnowledge])
 const selectedId = ref(baseAgents[0].id)
 const messages = ref<ChatMessage[]>([
   { id: 'welcome-user', role: 'user', content: '帮我梳理一下观察基金时可以先看哪些信息。' },
-  { id: 'welcome-assistant', role: 'assistant', content: '可以先看三件事：基金跟踪什么资产、近期表现与对应指数是否一致、持仓和行业有没有明显变化。\n\n下面的卡片是固定示例数据；这里的回答由浏览器生成，不会调用 AI 服务。' },
+  { id: 'welcome-assistant', role: 'assistant', content: '可以先看三件事：基金跟踪什么资产、近期表现与对应指数是否一致、持仓和行业有没有明显变化。\n\n下面是固定示例对话；后续回复会按当前模型配置使用本地示例或你配置的文本模型。' },
 ])
 const prompt = ref('')
 const pendingFiles = ref<string[]>([])
 const fileInput = ref<HTMLInputElement | null>(null)
 const knowledgeFileInput = ref<HTMLInputElement | null>(null)
 const thinking = ref(false)
+const modelConfigured = ref(false)
+const chatError = ref('')
 const copyNotice = ref('')
 const newAgentOpen = ref(false)
 const newAgentName = ref('')
@@ -68,6 +71,7 @@ const newAgentDescription = ref('')
 const deleteOpen = ref(false)
 const newAgentError = ref('')
 let replyTimer: number | undefined
+let activeController: AbortController | undefined
 
 const selectedAgent = computed(() => agents.value.find((agent) => agent.id === selectedId.value) ?? agents.value[0] ?? null)
 const selectedKnowledge = computed(() => knowledgeSources.value.filter((item) => selectedAgent.value?.knowledge.includes(item.id)))
@@ -171,27 +175,82 @@ function removeAgent() {
 
 function resetChat() {
   if (replyTimer) window.clearTimeout(replyTimer)
+  activeController?.abort()
+  activeController = undefined
   thinking.value = false
+  chatError.value = ''
   prompt.value = ''
   pendingFiles.value = []
-  messages.value = [{ id: makeId('hello'), role: 'assistant', content: '你好，我是' + (selectedAgent.value?.name ?? '知几') + '。你可以在这里体验对话界面；本地回复为固定示例，不会调用模型。' }]
+  messages.value = [{ id: makeId('hello'), role: 'assistant', content: '你好，我是' + (selectedAgent.value?.name ?? '知几') + '。这里可以体验文字对话；未配置模型接口时会显示本机示例回复。' }]
 }
 
 function makeDemoReply(query: string) {
   const focus = query.trim().slice(0, 80) || '你选择的材料'
   const knowledgeNames = selectedKnowledge.value.map((item) => item.name).join('、') || '暂无选中资料'
   const skillNames = selectedSkills.value.map((item) => item.name).join('、') || '未选择技能'
-  return '演示分析：围绕“' + focus + '”\n\n1. 先核对观察对象、数据时间和比较区间。\n2. 再结合固定行情快照与当前选中的知识资料整理变化。\n3. 对暂时无法由示例数据确认的部分，保留为待核实问题。\n\n本次界面配置：' + skillNames + '；资料：' + knowledgeNames + '。\n\n这是一条本地示例回复，不代表实时研究结论。'
+  return '## 简要结论\n\n围绕“' + focus + '”，可以先确认观察对象和数据时点，再结合相同区间的资料进行比较。\n\n### 建议核对\n\n1. 确认基金或股票代码，以及比较的时间范围。\n2. 对照已确认数据与估算数据，留意它们的更新时间。\n3. 把暂时无法从示例资料确认的内容列为待核实问题。\n\n| 数据 | 查看重点 |\n| --- | --- |\n| 已确认净值 | 作为持仓份额与历史对照的依据 |\n| 盘中估值 | 只作当日变化参考，注意更新时间 |\n\n**本机演示配置：**' + skillNames + '；' + knowledgeNames + '。\n\n> 这是固定示例回复，不代表实时研究结论。'
 }
 
-function queueDemoReply(query: string) {
+async function loadModelStatus() {
+  try {
+    const response = await fetch('/api/demo/model-status')
+    if (!response.ok) throw new Error('status')
+    const payload = await response.json() as { configured?: boolean }
+    modelConfigured.value = payload.configured === true
+  } catch {
+    modelConfigured.value = false
+  }
+}
+
+function recentMessages() {
+  const selected: Array<{ role: 'user' | 'assistant'; content: string }> = []
+  let total = 0
+  for (const message of [...messages.value].slice(-12).reverse()) {
+    const content = message.content.trim()
+    if (!content || total + content.length > 16_000) break
+    selected.push({ role: message.role, content })
+    total += content.length
+  }
+  return selected.reverse()
+}
+
+async function queueReply(query: string, attachmentOnly = false) {
   if (replyTimer) window.clearTimeout(replyTimer)
+  activeController?.abort()
+  chatError.value = ''
   thinking.value = true
+  if (modelConfigured.value && !attachmentOnly) {
+    const controller = new AbortController()
+    activeController = controller
+    try {
+      const response = await fetch('/api/demo/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ messages: recentMessages() }),
+        signal: controller.signal,
+      })
+      const payload = await response.json().catch(() => ({})) as { answer?: string; detail?: string }
+      if (!response.ok || !payload.answer) throw new Error(payload.detail || '模型请求失败，请检查后端配置后重试。')
+      messages.value = [...messages.value, { id: makeId('assistant'), role: 'assistant', content: payload.answer }]
+    } catch (error) {
+      if (!(error instanceof DOMException && error.name === 'AbortError')) {
+        chatError.value = error instanceof Error ? error.message : '模型请求失败，请稍后重试。'
+      }
+    } finally {
+      if (activeController === controller) activeController = undefined
+      thinking.value = false
+    }
+    return
+  }
+
   replyTimer = window.setTimeout(() => {
-    messages.value = [...messages.value, { id: makeId('assistant'), role: 'assistant', content: makeDemoReply(query) }]
+    const content = attachmentOnly
+      ? '目前的公开示例只记录附件文件名，不会读取或上传文件内容。请把需要讨论的文字粘贴到输入框。'
+      : makeDemoReply(query)
+    messages.value = [...messages.value, { id: makeId('assistant'), role: 'assistant', content }]
     thinking.value = false
     replyTimer = undefined
-  }, 550)
+  }, 450)
 }
 
 function sendMessage() {
@@ -202,19 +261,22 @@ function sendMessage() {
   messages.value = [...messages.value, { id: makeId('user'), role: 'user', content: text || '请查看附件', files: attachments }]
   prompt.value = ''
   pendingFiles.value = []
-  queueDemoReply(query)
+  void queueReply(query, attachments.length > 0 && !text)
 }
 
 function stopDemoReply() {
   if (replyTimer) window.clearTimeout(replyTimer)
   replyTimer = undefined
+  activeController?.abort()
+  activeController = undefined
   thinking.value = false
-  messages.value = [...messages.value, { id: makeId('assistant'), role: 'assistant', content: '演示回复已暂停。' }]
+  chatError.value = ''
+  messages.value = [...messages.value, { id: makeId('assistant'), role: 'assistant', content: '已停止本次生成。' }]
 }
 
 function retryLast() {
   const lastUser = [...messages.value].reverse().find((message) => message.role === 'user')
-  if (lastUser) queueDemoReply(lastUser.content)
+  if (lastUser) void queueReply(lastUser.content, lastUser.content === '请查看附件')
 }
 
 async function copyAnswer(message: ChatMessage) {
@@ -227,6 +289,7 @@ async function copyAnswer(message: ChatMessage) {
 }
 
 onMounted(() => {
+  void loadModelStatus()
   try {
     const saved = localStorage.getItem(STORAGE_KEY)
     if (saved) {
@@ -248,6 +311,7 @@ watch([agents, knowledgeSources], persistConfig, { deep: true })
 watch(selectedId, resetChat)
 onBeforeUnmount(() => {
   if (replyTimer) window.clearTimeout(replyTimer)
+  activeController?.abort()
 })
 </script>
 
@@ -309,7 +373,7 @@ onBeforeUnmount(() => {
 
         <section class="agent-chat-card">
           <header class="agent-chat-header">
-            <div><span class="agent-chat-status"><span></span> 本地预览</span><h3>与{{ selectedAgent.name }}对话</h3></div>
+            <div><span class="agent-chat-status"><span :class="{ connected: modelConfigured }"></span> {{ modelConfigured ? '已配置模型 API' : '本地示例回复' }}</span><h3>与{{ selectedAgent.name }}对话</h3></div>
             <button class="button button-light new-chat-button" @click="resetChat"><MessageSquarePlus :size="15" /> 新建对话</button>
           </header>
           <div class="agent-chat-messages" aria-live="polite">
@@ -317,7 +381,8 @@ onBeforeUnmount(() => {
               <span v-if="message.role === 'assistant'" class="demo-message-avatar"><Sparkles :size="15" /></span>
               <div class="demo-message-body">
                 <b>{{ message.role === 'user' ? '你' : selectedAgent.name }}</b>
-                <p>{{ message.content }}</p>
+                <AnswerRenderer v-if="message.role === 'assistant'" :content="message.content" />
+                <p v-else>{{ message.content }}</p>
                 <div v-if="message.files?.length" class="demo-message-files"><span v-for="file in message.files" :key="file">{{ file }}</span></div>
                 <div v-if="message.role === 'assistant'" class="demo-message-actions">
                   <button class="icon-button" aria-label="复制回答" title="复制回答" @click="copyAnswer(message)"><Copy :size="14" /></button>
@@ -325,13 +390,14 @@ onBeforeUnmount(() => {
                 </div>
               </div>
             </article>
-            <div v-if="thinking" class="demo-thinking"><span class="thinking-dot"></span><span>正在生成本地示例回复…</span><button class="icon-button" aria-label="暂停分析" title="暂停分析" @click="stopDemoReply"><Square :size="13" /></button></div>
+            <div v-if="thinking" class="demo-thinking"><span class="thinking-dot"></span><span>{{ modelConfigured ? '正在等待模型回复…' : '正在生成示例回复…' }}</span><button class="icon-button" aria-label="停止生成" title="停止生成" @click="stopDemoReply"><Square :size="13" /></button></div>
           </div>
+          <p v-if="chatError" class="agent-chat-error" role="alert">{{ chatError }} <button type="button" @click="retryLast">重试</button></p>
           <div v-if="pendingFiles.length" class="pending-file-list">
             <span v-for="file in pendingFiles" :key="file">{{ file }}<button :aria-label="'移除' + file" @click="pendingFiles = pendingFiles.filter((name) => name !== file)"><X :size="12" /></button></span>
           </div>
           <form class="agent-composer-live" @submit.prevent="sendMessage">
-            <textarea v-model="prompt" rows="2" aria-label="输入问题" placeholder="输入问题，或选择一份文件作为附件…" @keydown.ctrl.enter.prevent="sendMessage"></textarea>
+            <textarea v-model="prompt" rows="2" maxlength="8000" aria-label="输入问题" placeholder="输入问题，或选择一份文件作为附件…" @keydown.ctrl.enter.prevent="sendMessage"></textarea>
             <div class="agent-composer-toolbar">
               <div class="agent-composer-options">
                 <button type="button" class="icon-button attach-button" aria-label="选择附件" title="选择附件" @click="fileInput?.click()"><Paperclip :size="17" /></button>
@@ -342,7 +408,7 @@ onBeforeUnmount(() => {
               <button class="button button-primary agent-send-button" :disabled="thinking || (!prompt.trim() && !pendingFiles.length)" type="submit"><Send :size="15" /> 发送</button>
             </div>
           </form>
-          <p class="agent-demo-footnote">对话、附件和设置都只在浏览器本地演示；不会调用模型、上传文件或连接真实行情。</p>
+          <p class="agent-demo-footnote">{{ modelConfigured ? '文字会发送到你在后端 .env 配置的模型接口；密钥不会进入浏览器。附件内容、知识库和技能仍为本机界面示例。' : '当前使用本机示例回复。配置后端 .env 后可连接模型；附件内容、知识库和技能不会上传或调用。' }}</p>
         </section>
       </div>
     </div>
@@ -428,17 +494,18 @@ onBeforeUnmount(() => {
 .agent-chat-header h3 { margin: 5px 0 0; font-size: 14px; }
 .agent-chat-status { display: inline-flex; align-items: center; gap: 5px; color: #77839e; font-size: 9px; font-weight: 700; }
 .agent-chat-status span { width: 6px; height: 6px; border-radius: 50%; background: #b7c0d0; }
+.agent-chat-status span.connected { background: #30b887; }
 .new-chat-button { min-height: 36px; font-size: 10px; }
 .agent-chat-messages { display: grid; align-content: start; gap: 12px; max-height: 390px; min-height: 170px; overflow-y: auto; padding: 15px; background: #fcfcfe; }
-.demo-chat-message { display: flex; align-items: flex-start; gap: 8px; max-width: 94%; }
-.demo-chat-message.user { justify-self: end; }
-.demo-chat-message.assistant { justify-self: start; }
+.demo-chat-message { display: flex; width: 100%; min-width: 0; max-width: 100%; align-items: flex-start; gap: 8px; }
+.demo-chat-message.user { justify-self: stretch; justify-content: flex-end; }
+.demo-chat-message.assistant { justify-self: stretch; justify-content: flex-start; }
 .demo-message-avatar { display: grid; width: 28px; height: 28px; flex: 0 0 auto; place-items: center; color: #fff; background: var(--blue); border-radius: 9px; }
-.demo-message-body { min-width: 0; padding: 10px 12px; background: #fff; border: 1px solid #eceef5; border-radius: 4px 12px 12px; }
-.demo-chat-message.user .demo-message-body { color: #fff; background: var(--blue); border-color: var(--blue); border-radius: 12px 4px 12px 12px; }
+.demo-message-body { box-sizing: border-box; min-width: 0; max-width: calc(100% - 36px); padding: 10px 12px; background: #fff; border: 1px solid #eceef5; border-radius: 4px 12px 12px; }
+.demo-chat-message.user .demo-message-body { max-width: 94%; color: #fff; background: var(--blue); border-color: var(--blue); border-radius: 12px 4px 12px 12px; }
 .demo-message-body > b { color: var(--blue); font-size: 9px; }
 .demo-chat-message.user .demo-message-body > b { color: rgb(255 255 255 / 80%); }
-.demo-message-body p { margin: 5px 0 0; color: #56627b; font-size: 11px; line-height: 1.7; white-space: pre-line; overflow-wrap: anywhere; }
+.demo-message-body p { max-width: 100%; margin: 5px 0 0; color: #56627b; font-size: 11px; line-height: 1.7; white-space: pre-line; overflow-wrap: anywhere; }
 .demo-chat-message.user .demo-message-body p { color: #fff; }
 .demo-message-files { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 7px; }
 .demo-message-files span { padding: 4px 6px; color: #5765df; background: #f0f1ff; border-radius: 6px; font-size: 9px; overflow-wrap: anywhere; }
@@ -448,6 +515,8 @@ onBeforeUnmount(() => {
 .thinking-dot { width: 7px; height: 7px; background: #6b76f4; border-radius: 50%; animation: pulse 1s ease-in-out infinite alternate; }
 @keyframes pulse { to { opacity: .35; transform: scale(.82); } }
 .demo-thinking .icon-button { width: 30px; height: 30px; }
+.agent-chat-error { margin: 8px 15px 0; color: #b53c45; font-size: 11px; line-height: 1.55; }
+.agent-chat-error button { margin-left: 4px; padding: 4px 8px; color: #4d5fe0; background: #f0f2ff; border: 0; border-radius: 7px; cursor: pointer; font: inherit; font-weight: 700; }
 .pending-file-list { display: flex; flex-wrap: wrap; gap: 6px; padding: 8px 13px 0; }
 .pending-file-list > span { display: inline-flex; align-items: center; gap: 5px; max-width: 100%; padding: 5px 7px; color: #5f6c86; background: #f3f5fa; border-radius: 7px; font-size: 9px; overflow-wrap: anywhere; }
 .pending-file-list button { display: grid; width: 20px; height: 20px; place-items: center; color: #7a859b; background: transparent; border: 0; border-radius: 6px; cursor: pointer; }
@@ -500,7 +569,7 @@ onBeforeUnmount(() => {
   .agent-chat-header { align-items: flex-start; padding: 11px 12px; }
   .new-chat-button { min-height: 40px; }
   .agent-chat-messages { min-height: 210px; max-height: 48dvh; padding: 12px; }
-  .demo-chat-message { max-width: 98%; }
+  .demo-chat-message { max-width: 100%; }
   .demo-message-body p { font-size: 12px; }
   .agent-composer-live { margin: 9px 10px 0; padding: 9px; }
   .agent-composer-live textarea { min-height: 62px; font-size: 16px; }
@@ -508,5 +577,9 @@ onBeforeUnmount(() => {
   .agent-count-chip { min-height: 30px; }
   .agent-demo-footnote { margin: 8px 11px 11px; }
   .agent-modal { padding: 17px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .thinking-dot { animation: none; }
 }
 </style>

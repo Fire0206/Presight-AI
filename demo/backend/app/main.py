@@ -10,11 +10,12 @@ import sqlite3
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Annotated
+from typing import Annotated, Literal
 
 from fastapi import FastAPI, HTTPException, Path as PathParam, Response, status
 from pydantic import BaseModel, ConfigDict, Field
 
+from .model_api import complete_chat, model_is_configured
 from .providers import fetch_market_data
 
 DEFAULT_DB_PATH = Path(__file__).resolve().parents[1] / "data" / "demo.sqlite3"
@@ -130,6 +131,19 @@ class WatchlistCreate(BaseModel):
     name: str = Field(min_length=1, max_length=60)
 
 
+class ChatMessageInput(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True, extra="forbid")
+
+    role: Literal["user", "assistant"]
+    content: str = Field(min_length=1, max_length=8_000)
+
+
+class ChatCompletionInput(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    messages: list[ChatMessageInput] = Field(min_length=1, max_length=12)
+
+
 def connect(db_path: Path) -> sqlite3.Connection:
     db_path.parent.mkdir(parents=True, exist_ok=True)
     connection = sqlite3.connect(db_path, timeout=5)
@@ -160,7 +174,7 @@ def create_app(db_path: Path = DEFAULT_DB_PATH) -> FastAPI:
 
     app = FastAPI(
         title="知几 Presight 本地示例 API",
-        description="提供固定行情快照、本地自选列表示例，以及可自行配置的基金和股票数据源接口。",
+        description="提供固定行情快照、本地自选列表示例、可配置的行情数据源，以及可选的本地文本模型接口。",
         version="2.0.0",
         lifespan=lifespan,
     )
@@ -172,6 +186,18 @@ def create_app(db_path: Path = DEFAULT_DB_PATH) -> FastAPI:
     @app.get("/api/demo/overview")
     def get_overview() -> dict:
         return DEMO_OVERVIEW
+
+    @app.get("/api/demo/model-status")
+    def get_model_status() -> dict[str, bool]:
+        # Never return the provider URL, model identifier, or API key to the browser.
+        return {"configured": model_is_configured()}
+
+    @app.post("/api/demo/chat")
+    async def chat(request: ChatCompletionInput) -> dict[str, str]:
+        messages = [message.model_dump() for message in request.messages]
+        if sum(len(message["content"]) for message in messages) > 16_000:
+            raise HTTPException(status_code=413, detail="对话内容过长，请缩短后重试。")
+        return {"answer": await complete_chat(messages)}
 
     @app.get("/api/market/funds")
     async def get_fund_market_data() -> object:

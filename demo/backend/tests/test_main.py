@@ -1,7 +1,10 @@
+import json
+
 import httpx
 from fastapi.testclient import TestClient
 
 from app import providers
+from app import model_api
 from app.main import create_app
 
 
@@ -112,3 +115,90 @@ def test_market_endpoint_uses_configured_url_and_server_side_auth(tmp_path, monk
 
     assert response.status_code == 200
     assert response.json() == {"items": [{"code": "000001", "name": "示例基金"}]}
+
+
+def test_model_status_is_false_by_default_and_does_not_expose_secrets(tmp_path, monkeypatch):
+    monkeypatch.setenv("MODEL_API_KEY", "never-return-this")
+    monkeypatch.setenv("MODEL_API_URL", "https://provider.example/v1/chat/completions")
+    monkeypatch.setenv("MODEL_NAME", "private-model-id")
+    monkeypatch.setenv("MODEL_CHAT_ENABLED", "false")
+    app = create_app(tmp_path / "test.sqlite3")
+
+    with TestClient(app) as client:
+        response = client.get("/api/demo/model-status")
+
+    assert response.status_code == 200
+    assert response.json() == {"configured": False}
+    assert "never-return-this" not in response.text
+    assert "private-model-id" not in response.text
+
+
+def test_model_status_handles_malformed_endpoint_without_exposing_configuration(tmp_path, monkeypatch):
+    monkeypatch.setenv("MODEL_CHAT_ENABLED", "true")
+    monkeypatch.setenv("MODEL_API_URL", "https://[")
+    monkeypatch.setenv("MODEL_API_KEY", "server-only-key")
+    monkeypatch.setenv("MODEL_NAME", "private-model-id")
+    app = create_app(tmp_path / "test.sqlite3")
+
+    with TestClient(app) as client:
+        response = client.get("/api/demo/model-status")
+
+    assert response.status_code == 200
+    assert response.json() == {"configured": False}
+    assert "server-only-key" not in response.text
+    assert "private-model-id" not in response.text
+
+
+def test_model_chat_uses_backend_secret_and_returns_only_answer(tmp_path, monkeypatch):
+    monkeypatch.setenv("MODEL_CHAT_ENABLED", "true")
+    monkeypatch.setenv("MODEL_API_URL", "https://provider.example/v1/chat/completions")
+    monkeypatch.setenv("MODEL_API_KEY", "server-only-test-key")
+    monkeypatch.setenv("MODEL_NAME", "demo-model")
+    monkeypatch.setenv("MODEL_MAX_TOKENS", "999999")
+
+    def handle_request(request: httpx.Request) -> httpx.Response:
+        assert str(request.url) == "https://provider.example/v1/chat/completions"
+        assert request.headers["Authorization"] == "Bearer server-only-test-key"
+        payload = json.loads(request.content)
+        assert payload["model"] == "demo-model"
+        assert payload["max_tokens"] == model_api.MAX_COMPLETION_TOKENS
+        assert payload["stream"] is False
+        return httpx.Response(200, json={
+            "choices": [{"message": {"content": "## 结论\n\n回答", "reasoning_content": "不应泄露"}}],
+        })
+
+    transport = httpx.MockTransport(handle_request)
+    monkeypatch.setattr(
+        model_api,
+        "create_http_client",
+        lambda timeout_seconds: httpx.AsyncClient(transport=transport, timeout=1),
+    )
+    app = create_app(tmp_path / "test.sqlite3")
+
+    with TestClient(app) as client:
+        response = client.post("/api/demo/chat", json={"messages": [{"role": "user", "content": "你好"}]})
+
+    assert response.status_code == 200
+    assert response.json() == {"answer": "## 结论\n\n回答"}
+    assert "不应泄露" not in response.text
+    assert "server-only-test-key" not in response.text
+
+
+def test_model_chat_is_disabled_unless_configured_and_bounds_input(tmp_path, monkeypatch):
+    monkeypatch.setenv("MODEL_CHAT_ENABLED", "false")
+    app = create_app(tmp_path / "test.sqlite3")
+
+    with TestClient(app) as client:
+        disabled = client.post("/api/demo/chat", json={"messages": [{"role": "user", "content": "hello"}]})
+        too_long = client.post("/api/demo/chat", json={"messages": [{"role": "user", "content": "x" * 8_001}]})
+        too_many = client.post("/api/demo/chat", json={"messages": [{"role": "user", "content": str(index)} for index in range(13)]})
+        total_too_long = client.post("/api/demo/chat", json={"messages": [
+            {"role": "user", "content": "x" * 8_000},
+            {"role": "assistant", "content": "y" * 8_000},
+            {"role": "user", "content": "z" * 1},
+        ]})
+
+    assert disabled.status_code == 503
+    assert too_long.status_code == 422
+    assert too_many.status_code == 422
+    assert total_too_long.status_code == 413
